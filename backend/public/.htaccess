@@ -1,0 +1,29 @@
+# =====================================================
+# .htaccess - Sistema de Cumpleaños Backend
+# Compatible con desarrollo local y producción
+# =====================================================
+
+RewriteEngine On
+
+# NOTA: Los headers CORS se manejan en config/cors.php
+# para evitar duplicación y conflictos
+
+# --- Configuración según entorno ---
+
+# LOCAL (Docker): http://localhost:8000/
+# Las rutas son relativas a la raíz del servidor
+
+# PRODUCCIÓN: https://kyz.com.ar/birthdays/backend/public/
+# Detectar si estamos en producción (en subdirectorio)
+RewriteCond %{REQUEST_URI} ^/birthdays/backend/public/
+RewriteRule ^(.*)$ - [E=PRODUCTION:1]
+
+# Si estamos en producción, remover el prefijo /birthdays/backend/public del path
+RewriteCond %{ENV:PRODUCTION} =1
+RewriteCond %{REQUEST_URI} ^/birthdays/backend/public/(.*)$
+RewriteRule ^(.*)$ %1 [DPI]
+
+# Redirigir todas las requests que no sean archivos o directorios al index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]

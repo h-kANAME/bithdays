@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: birthdays_backend
+    ports:
+      - "8000:80"
+    volumes:
+      - ./backend:/var/www/html
+    env_file:
+      - .env.local
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - birthdays_network
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: birthdays_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    env_file:
+      - .env.local
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WDS_SOCKET_PORT=3000
+    depends_on:
+      - backend
+    networks:
+      - birthdays_network
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+  database:
+    image: mysql:8.0
+    container_name: birthdays_db
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: birthdays_db
+      MYSQL_USER: birthdays_user
+      MYSQL_PASSWORD: local_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - birthdays_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: birthdays_phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: database
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: root_password
+      UPLOAD_LIMIT: 50M
+    depends_on:
+      - database
+    networks:
+      - birthdays_network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  birthdays_network:
+    driver: bridge
